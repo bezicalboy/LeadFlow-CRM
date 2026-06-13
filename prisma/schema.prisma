@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum ActivityAction {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+  NOTE_ADDED
+  TASK_COMPLETED
+  DEAL_WON
+}
+
+enum EntityType {
+  LEAD
+  NOTE
+  TASK
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique
+  passwordHash String
+  name         String?
+  avatar       String?
+  role         UserRole     @default(user)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  lastSignInAt DateTime     @default(now())
+  leads        Lead[]
+  tasks        LeadTask[]
+  activities   ActivityLog[]
+
+  @@map("users")
+}
+
+model Lead {
+  id        Int          @id @default(autoincrement())
+  name      String
+  company   String
+  email     String
+  phone     String?
+  status    LeadStatus   @default(NEW)
+  value     Decimal      @default(0) @db.Decimal(12, 2)
+  notes     String?
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  leadNotes LeadNote[]
+  leadTasks LeadTask[]
+
+  @@map("leads")
+}
+
+model LeadNote {
+  id        Int      @id @default(autoincrement())
+  content   String
+  leadId    Int
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("lead_notes")
+}
+
+model LeadTask {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  dueDate     DateTime?
+  completed   Boolean   @default(false)
+  leadId      Int
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@map("lead_tasks")
+}
+
+model ActivityLog {
+  id          Int            @id @default(autoincrement())
+  action      ActivityAction
+  entityType  EntityType
+  entityId    Int
+  description String         @db.VarChar(500)
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+
+  @@map("activity_log")
+}
